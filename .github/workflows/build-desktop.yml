@@ -1,0 +1,48 @@
+name: Build GlyphIsland Desktop
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            command: pack:win
+            artifact: release/*.exe
+            label: windows-portable
+          - os: ubuntu-latest
+            command: pack:linux
+            artifact: release/*.AppImage
+            label: linux-appimage
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+      - name: Build and package
+        run: npm run ${{ matrix.command }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Upload packaged application
+        uses: actions/upload-artifact@v4
+        with:
+          name: GlyphIsland-${{ matrix.label }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
